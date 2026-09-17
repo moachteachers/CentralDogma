@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080f20">
+  <meta name="description" content="משחק לימודי אינטראקטיבי על הדרך מ־DNA לחלבון">
+  <title>הצופן החי — מסע מ־DNA לחלבון</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="assets/cellular-depth.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/3d/web/cell-exterior.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="world" aria-hidden="true">
+      <div class="world__image"></div>
+      <div class="world__veil"></div>
+      <canvas id="particleCanvas"></canvas>
+    </div>
+
+    <header class="topbar">
+      <div class="brand" aria-label="הצופן החי">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40"><path d="M11 5c17 8 1 22 18 30M29 5c-17 8-1 22-18 30M13 10h14M11 18h18M11 26h18M13 33h14"/></svg>
+        </span>
+        <span class="brand__text">
+          <strong>הצופן החי</strong>
+          <small>מסע מ־<bdi dir="ltr">DNA</bdi> לחלבון</small>
+        </span>
+      </div>
+
+      <nav class="phase-tracker" aria-label="התקדמות במסע">
+        <button class="phase is-current" type="button" data-phase="cell" aria-current="step"><span>01</span><em>התא</em></button>
+        <button class="phase" type="button" data-phase="nucleus" disabled><span>02</span><em>הגרעין</em></button>
+        <button class="phase" type="button" data-phase="transcription" disabled><span>03</span><em>שעתוק</em></button>
+        <button class="phase" type="button" data-phase="transfer" disabled><span>04</span><em>העברה</em></button>
+        <button class="phase" type="button" data-phase="translation" disabled><span>05</span><em>תרגום</em></button>
+        <button class="phase" type="button" data-phase="complete" disabled><span>06</span><em>פענוח</em></button>
+      </nav>
+
+      <div class="hud">
+        <div class="spark-counter" title="נקודות משימה" aria-label="נקודות משימה">
+          <span class="spark-counter__icon">✦</span>
+          <span id="sparkCount">30</span>
+          <small>נקודות</small>
+        </div>
+        <button class="icon-button" id="soundToggle" type="button" aria-label="כיבוי צלילים" aria-pressed="true">
+          <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4 4 0 0 0-2-2.65v5.3A4 4 0 0 0 16.5 12Zm-2-7.1v2.06a6 6 0 0 1 0 10.08v2.06a8 8 0 0 0 0-14.2Z"/></svg>
+          <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 16-1.4 1.4-3.2-3.2a8 8 0 0 1-.9.9v-2.7L13 14.9V19l-5-4H4V9h1.1L2.6 6.4 4 4Zm9 1v5.1L9.4 6.5 13 5Zm3.5 7c0-1.2-.8-2.3-2-2.7V7.2a5 5 0 0 1 2 7.2l-1.5-1.5c.3-.2.5-.5.5-.9Zm0-7.1a8 8 0 0 1 2.3 11.8l-1.5-1.5a6 6 0 0 0-1.3-8.3v-2Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="mission-layout">
+      <aside class="mission-panel" aria-live="polite">
+        <div class="mission-panel__topline">
+          <span class="mission-kicker" id="missionKicker">משימה 01</span>
+          <span class="mission-status"><i></i><span id="missionStatus">ממתין לסריקה</span></span>
+        </div>
+        <button class="back-button" id="backButton" type="button" disabled aria-label="חזרה לשלב הקודם"><span aria-hidden="true">→</span> חזרה</button>
+        <div class="story-transmission" id="storyTransmission">
+          <span>תיק החירום // נקודת כניסה</span>
+          <p>ה־<bdi dir="ltr">DNA</bdi> המקורי עדיין שלם. הדרך אליו עוברת דרך הגבול החי של התא.</p>
+        </div>
+        <h1 id="missionTitle">חידת השער החי</h1>
+        <p id="missionDescription">האות האבוד מסתתר מעבר לגבול התא. זהו את המבנה שמפריד בין פנים התא לסביבתו והפעילו את הסורק.</p>
+        <div class="mission-clue" id="missionClue">
+          <span class="mission-clue__icon" aria-hidden="true">?</span>
+          <span><strong>חידת הסף</strong><small>אני הגבול הגמיש של התא. אני בורר מה נכנס ומה יוצא, אך איני קיר אטום. מי אני?</small></span>
+        </div>
+        <div class="threshold-answers" id="thresholdAnswers" role="group" aria-label="תשובות לחידת הסף">
+          <button type="button" data-answer="nuclear-envelope">מעטפת הגרעין</button>
+          <button type="button" data-answer="cell-membrane">ממברנת התא</button>
+          <button type="button" data-answer="cell-wall">דופן התא</button>
+        </div>
+        <button class="primary-button" id="missionAction" type="button" hidden>
+          <span>הפכו את הממברנה לשקופה</span><i aria-hidden="true">←</i>
+        </button>
+        <div class="micro-fact" id="microFact">
+          <span>טיפ מהמעבדה</span>
+          <p>הגבול החי אינו קיר אטום: הוא מווסת אילו חומרים נכנסים לתא ויוצאים ממנו.</p>
+        </div>
+      </aside>
+
+      <section class="stage" id="stage" aria-label="אזור המשימה">
+        <div class="stage__grid" aria-hidden="true"></div>
+        <div class="stage__vignette" aria-hidden="true"></div>
+        <div class="depth-label" id="depthLabel"><span>עומק</span><b>מחוץ לתא</b></div>
+
+        <section class="scene scene--cell is-active" id="cellScene" data-scene="cell" aria-label="התבוננות בתא מבחוץ">
+          <div class="scan-beam" aria-hidden="true"></div>
+          <div class="cell-wrap">
+            <div class="cell-shadow" aria-hidden="true"></div>
+            <button class="cell-shell" id="cellShell" type="button" aria-label="ממברנת התא — לחצו להפעלת סריקה">
+              <img class="cell-exterior-asset bio-asset" src="assets/3d/web/cell-exterior.webp" alt="">
+            </button>
+            <div class="cell-interior" id="cellInterior" aria-hidden="true">
+              <img class="cell-interior-asset bio-asset" src="assets/3d/web/cell-interior.webp" alt="">
+            </div>
+            <button class="nucleus-hotspot" id="nucleusHotspot" type="button" aria-label="גרעין התא" tabindex="-1">
+              <span class="nucleus-hotspot__core"></span>
+              <span class="nucleus-hotspot__halo"></span>
+              <span class="target-ring"></span>
+            </button>
+            <button class="organelle-hotspot organelle-hotspot--mito-nw" type="button" data-organelle="mitochondrion" data-label="מיטוכונדריה" aria-label="מיטוכונדריה עליונה" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--mito-east" type="button" data-organelle="mitochondrion" data-label="מיטוכונדריה" aria-label="מיטוכונדריה ימנית" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--mito-sw" type="button" data-organelle="mitochondrion" data-label="מיטוכונדריה" aria-label="מיטוכונדריה שמאלית תחתונה" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--mito-south" type="button" data-organelle="mitochondrion" data-label="מיטוכונדריה" aria-label="מיטוכונדריה תחתונה" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--golgi" type="button" data-organelle="golgi" data-label="מערכת גולג׳י" aria-label="מערכת גולג׳י" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--peroxisome" type="button" data-organelle="peroxisome" data-label="פרוקסיזום" aria-label="פרוקסיזום" tabindex="-1"></button>
+            <button class="organelle-hotspot organelle-hotspot--lysosome" type="button" data-organelle="lysosome" data-label="ליזוזום" aria-label="ליזוזום" tabindex="-1"></button>
+            <div class="organelle-magnifier" id="organelleMagnifier" role="status" aria-live="polite" aria-hidden="true">
+              <div class="organelle-magnifier__viewport"><img id="organelleMagnifierImage" src="assets/3d/web/cell-interior.webp" alt=""></div>
+              <span id="organelleMagnifierLabel"></span>
+            </div>
+          </div>
+          <div class="object-label cell-label" id="cellLabel"><span></span> מעטפת לא מזוהה</div>
+          <div class="scale-readout" aria-hidden="true"><i></i><span>≈ 20 µm</span></div>
+        </section>
+
+        <section class="scene scene--nucleus" id="nucleusScene" data-scene="nucleus" aria-label="בחירת כרומוזום">
+          <div class="nucleus-chamber">
+            <img class="nucleus-asset bio-asset" src="assets/3d/web/nucleus.webp" alt="">
+            <div class="chromosome-field">
+              <button class="chromosome chrom-1" type="button" data-chromosome="3" aria-label="כרומוזום 3"><img src="assets/3d/web/chromosome.webp" alt=""><b>3</b></button>
+              <button class="chromosome chrom-2" type="button" data-chromosome="12" aria-label="כרומוזום 12"><img src="assets/3d/web/chromosome.webp" alt=""><b>12</b></button>
+              <button class="chromosome chrom-3" type="button" data-chromosome="7" aria-label="כרומוזום 7"><img src="assets/3d/web/chromosome.webp" alt=""><b>7</b></button>
+              <button class="chromosome chrom-4" type="button" data-chromosome="18" aria-label="כרומוזום 18"><img src="assets/3d/web/chromosome.webp" alt=""><b>18</b></button>
+              <button class="chromosome chrom-5" type="button" data-chromosome="2" aria-label="כרומוזום 2"><img src="assets/3d/web/chromosome.webp" alt=""><b>2</b></button>
+              <button class="chromosome chrom-6" type="button" data-chromosome="21" aria-label="כרומוזום 21"><img src="assets/3d/web/chromosome.webp" alt=""><b>21</b></button>
+            </div>
+            <div class="scanner-reticle" aria-hidden="true"><span></span><i></i></div>
+          </div>
+        </section>
+
+        <section class="scene scene--gene" id="geneScene" data-scene="gene" aria-label="איתור גן על גבי DNA">
+          <div class="chromosome-zoom" aria-hidden="true"><span>כרומוזום 7</span><i></i></div>
+          <div class="dna-helix" id="dnaHelix" aria-hidden="true"><img class="dna-asset bio-asset" src="assets/3d/web/dna-helix.webp" alt=""></div>
+          <div class="gene-map" role="group" aria-label="גנים על גבי DNA">
+            <button type="button" class="gene-segment segment-a" data-gene="a"><span>5 נוקלאוטידים</span></button>
+            <button type="button" class="gene-segment segment-b" data-gene="target"><span>12 נוקלאוטידים</span></button>
+            <button type="button" class="gene-segment segment-c" data-gene="c"><span>18 נוקלאוטידים</span></button>
+          </div>
+        </section>
+
+        <section class="scene scene--transcription" id="transcriptionScene" data-scene="transcription" aria-label="משימת שעתוק">
+          <div class="location-chip"><span></span> בתוך גרעין התא</div>
+          <div class="sequence-board" id="transcriptionFork">
+            <img class="transcription-bubble-asset bio-asset" src="assets/3d/web/transcription-bubble.webp" alt="">
+            <div class="polymerase-machine" aria-hidden="true">
+              <img class="polymerase-asset bio-asset" src="assets/3d/web/rna-polymerase.webp" alt="">
+              <b class="asset-label">אנזים השעתוק</b>
+              <div class="polymerase-machine__glow"></div>
+            </div>
+            <div class="strand-label"><bdi class="molecule-badge molecule-badge--dna" dir="ltr">DNA</bdi><strong>גדיל התבנית</strong></div>
+            <div class="transcription-workspace" aria-label="אזור העבודה בתוך בועת השעתוק">
+              <span class="fork-zone-label">אזור השעתוק הפעיל</span>
+              <div class="sequence-row template-row" id="templateRow" dir="ltr" aria-label="רצף גדיל התבנית"></div>
+              <div class="pairing-lines" id="pairingLines" aria-hidden="true"></div>
+              <div class="sequence-row rna-row" id="rnaRow" dir="ltr" aria-label="רצף RNA שנבנה"></div>
+              <span class="rna-chain-label" aria-hidden="true"><i></i><b>שרשרת <bdi dir="ltr">RNA</bdi> נבנית</b></span>
+            </div>
+            <div class="strand-label strand-label--rna"><bdi class="molecule-badge molecule-badge--rna" dir="ltr">RNA</bdi><strong>העותק החדש</strong></div>
+          </div>
+          <div class="base-lab">
+            <div class="base-lab__header"><span>מגש נוקלאוטידים</span><small>לחצו או גררו אל המקום המואר</small></div>
+            <div class="base-options" id="baseOptions" role="group" aria-label="בחירת נוקלאוטיד RNA">
+              <button class="base-token base-a" type="button" data-base="A" draggable="true"><i><img src="assets/3d/web/nucleotide-a.webp" alt=""></i><b>A</b><small>אדנין</small></button>
+              <button class="base-token base-u" type="button" data-base="U" draggable="true"><i><img src="assets/3d/web/nucleotide-u.webp" alt=""></i><b>U</b><small>אורציל</small></button>
+              <button class="base-token base-c" type="button" data-base="C" draggable="true"><i><img src="assets/3d/web/nucleotide-c.webp" alt=""></i><b>C</b><small>ציטוזין</small></button>
+              <button class="base-token base-g" type="button" data-base="G" draggable="true"><i><img src="assets/3d/web/nucleotide-g.webp" alt=""></i><b>G</b><small>גואנין</small></button>
+            </div>
+          </div>
+          <div class="pairing-key" aria-label="כללי ההתאמה">
+            <span>מפתח ההתאמה</span>
+            <div><b class="mini-base base-a">A</b><i>↔</i><b class="mini-base base-u">U</b></div>
+            <div><b class="mini-base base-t">T</b><i>↔</i><b class="mini-base base-a">A</b></div>
+            <div><b class="mini-base base-c">C</b><i>↔</i><b class="mini-base base-g">G</b></div>
+            <div><b class="mini-base base-g">G</b><i>↔</i><b class="mini-base base-c">C</b></div>
+          </div>
+          <div class="sequence-progress"><span id="transcriptionProgress">0 / 12</span><i><b id="transcriptionBar"></b></i></div>
+        </section>
+
+        <section class="scene scene--transfer" id="transferScene" data-scene="transfer" aria-label="העברת RNA מהגרעין לריבוזום">
+          <div class="transfer-world">
+            <div class="nucleus-zone">
+              <img class="transfer-nucleus-asset bio-asset" src="assets/3d/web/nucleus.webp" alt="">
+              <span class="zone-label">גרעין</span>
+              <div class="nuclear-wall"><i></i><i></i><i></i></div>
+              <div class="nuclear-envelope-anchor" aria-label="נקב המשובץ במעטפת הגרעין">
+                <button class="nuclear-gate" id="nuclearGate" type="button" aria-label="נקב טבעי במעטפת הגרעין"><span>נקב הגרעין</span></button>
+              </div>
+            </div>
+            <div class="cytoplasm-zone"><span class="zone-label">ציטופלזמה</span></div>
+            <button class="rna-cargo" id="rnaCargo" type="button" aria-label="מולקולת RNA, גררו דרך נקב הגרעין אל הריבוזום">
+              <img class="rna-asset bio-asset" src="assets/3d/web/rna-strand-v2.webp" alt="">
+              <b><bdi dir="ltr">RNA</bdi> שליח</b>
+            </button>
+            <button class="ribosome-dock" id="ribosomeDock" type="button" aria-label="ריבוזום — יעד ה־RNA">
+              <img class="dock-large bio-asset" src="assets/3d/web/ribosome-large.webp" alt=""><img class="dock-small bio-asset" src="assets/3d/web/ribosome-small.webp" alt=""><i></i><b>ריבוזום</b>
+            </button>
+            <div class="transfer-path" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="drag-tip"><span>↔</span> גררו את ה־RNA דרך השער הנכון, או לחצו לפי הסדר: RNA ← שער ← ריבוזום</div>
+        </section>
+
+        <section class="scene scene--translation" id="translationScene" data-scene="translation" aria-label="משימת תרגום">
+          <div class="location-chip"><span></span> על ריבוזום בציטופלזמה</div>
+          <div class="translation-machine" id="translationMachine">
+            <img class="translation-rna-asset bio-asset" src="assets/3d/web/rna-strand-v2.webp" alt="">
+            <div class="translation-rna" id="translationRna" dir="ltr">
+              <div class="codon is-current" data-codon="AUG"><span>A</span><span>U</span><span>G</span><b>AUG</b></div>
+              <div class="codon" data-codon="GCU"><span>G</span><span>C</span><span>U</span><b>GCU</b></div>
+              <div class="codon" data-codon="UUU"><span>U</span><span>U</span><span>U</span><b>UUU</b></div>
+              <div class="codon stop-codon" data-codon="UAA"><span>U</span><span>A</span><span>A</span><b>UAA</b></div>
+            </div>
+            <div class="ribo-subunit ribo-subunit--large" id="largeSubunit" aria-label="תת־היחידה הגדולה של הריבוזום"><span>תת־היחידה הגדולה</span><i><img class="bio-asset" src="assets/3d/web/ribosome-large.webp" alt=""></i></div>
+            <div class="ribo-subunit ribo-subunit--small" id="smallSubunit" aria-label="תת־היחידה הקטנה של הריבוזום"><span>תת־היחידה הקטנה</span><i><img class="bio-asset" src="assets/3d/web/ribosome-small.webp" alt=""></i></div>
+            <div class="ribosome-binding-status" id="ribosomeBindingStatus" aria-live="polite" hidden><i aria-hidden="true"></i><span>הריבוזום נקשר ל־RNA...</span></div>
+            <div class="reading-window" aria-hidden="true"><span></span><b>חלון הקריאה</b></div>
+            <div class="peptide-chain" id="peptideChain" aria-label="שרשרת חומצות אמיניות"></div>
+          </div>
+          <div class="amino-lab" id="aminoLab" hidden>
+            <div class="amino-lab__header"><span>מאגר מטעני חומצות אמיניות</span><small id="codonPrompt">איזו חומצה אמינית מקודד AUG?</small></div>
+            <div class="amino-options" id="aminoOptions" role="group" aria-label="בחירת חומצה אמינית">
+              <button class="amino-token amino-met" type="button" data-amino="met" draggable="true"><i><img src="assets/3d/web/amino-methionine.webp" alt=""></i><b>מתיונין</b><small>חומצה אמינית</small></button>
+              <button class="amino-token amino-ala" type="button" data-amino="ala" draggable="true"><i><img src="assets/3d/web/amino-alanine.webp" alt=""></i><b>אלנין</b><small>חומצה אמינית</small></button>
+              <button class="amino-token amino-phe" type="button" data-amino="phe" draggable="true"><i><img src="assets/3d/web/amino-phenylalanine.webp" alt=""></i><b>פנילאלנין</b><small>חומצה אמינית</small></button>
+              <button class="amino-token amino-gly" type="button" data-amino="gly" draggable="true"><i><img src="assets/3d/web/amino-glycine.webp" alt=""></i><b>גליצין</b><small>חומצת אמינו</small></button>
+              <button class="amino-token amino-release" type="button" data-amino="release" draggable="true"><i class="stop-choice-icon"><img src="assets/3d/web/release-factor.webp" alt=""></i><b>סיום התירגום</b><small>אפשרות מיוחדת</small></button>
+            </div>
+          </div>
+          <button class="genetic-code-launch" id="codeButton" type="button" hidden aria-haspopup="dialog" aria-controls="codeDialog">
+            <span>פתחו את הקוד הגנטי המלא</span><b id="currentCodonBadge" dir="ltr">AUG</b>
+          </button>
+          <div class="translation-progress"><span>קודון <b id="codonIndex">1</b> מתוך 4</span><div><i></i><i></i><i></i><i></i></div></div>
+        </section>
+
+        <section class="scene scene--complete" id="completeScene" data-scene="complete" aria-label="סיום המסע">
+          <div class="completion-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="completion-confetti" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="celebration-burst" id="celebrationBurst" aria-hidden="true"></div>
+          <div class="protein-model" id="proteinModel" aria-label="חלבון קצר בן שלוש חומצות אמיניות">
+            <img class="tripeptide-asset bio-asset" src="assets/3d/web/tripeptide.webp" alt="מודל תלת־ממדי של החלבון מתיונין–אלנין–פנילאלנין">
+            <div class="protein-legend"><span>מתיונין</span><i></i><span>אלנין</span><i></i><span>פנילאלנין</span></div>
+          </div>
+          <div class="signal-to-neighbors" aria-label="חלבון האיתות מזעיק תאי תמך ותאי חיסון שכנים לקריאת תגבור">
+            <img src="assets/3d/web/cell-exterior.webp" alt="תא שכן ראשון">
+            <div><i></i><span>קריאת תגבור לרקמה</span><i></i></div>
+            <img src="assets/3d/web/cell-exterior.webp" alt="תא שכן שני">
+          </div>
+          <div class="completion-card" id="completionCard">
+            <div class="completion-agent-return">
+              <img src="assets/3d/web/agent-pair-celebrating.png" alt="הסוכן והסוכנת מריעים וחוגגים את הצלחת המשימה">
+              <span><em>✦ משימה הושלמה ✦</em><b>פיצחנו את הקוד!</b><small>החלבון הושלם — ואות החירום נקלט בתאים השכנים!</small></span>
+            </div>
+            <div class="completion-badge"><span>✦</span><i></i></div>
+            <span class="completion-eyebrow">מבצע הצופן הצליח • השידור פעיל</span>
+            <h2>האות שוחזר — חלבון האיתות יצא לפעולה!</h2>
+            <p>החלבון הקצר הוא קריאת חירום: הוא מזעיק תאי תמך ותאי חיסון סמוכים, שמפעילים מנגנוני הגנה, מסייעים בסילוק גורם הנזק ומתחילים את התאוששות הרקמה.</p>
+            <div class="dogma-flow" aria-label="הדוגמה המרכזית">
+              <span><bdi dir="ltr">DNA</bdi><small>מידע</small></span><i>←<small>שעתוק</small></i><span><bdi dir="ltr">RNA</bdi><small>הודעה</small></span><i>←<small>תרגום</small></i><span>חלבון<small>תוצר</small></span>
+            </div>
+            <div class="mission-result"><b>12</b><span>נוקלאוטידים</span><i></i><b>4</b><span>קודונים</span><i></i><b>3</b><span>חומצות אמיניות</span></div>
+            <button class="primary-button primary-button--wide" id="startQuiz" type="button">אשרו את הפענוח במבחן היציאה <i>←</i></button>
+          </div>
+          <div class="quiz-card" id="quizCard" hidden>
+            <div class="quiz-progress"><span id="quizCounter">שאלה 1 מתוך 3</span><i><b id="quizBar"></b></i></div>
+            <span class="completion-eyebrow">בדיקת פענוח</span>
+            <h2 id="quizQuestion">היכן מתרחש השעתוק בתא איקריוטי?</h2>
+            <div class="quiz-options" id="quizOptions"></div>
+            <p class="quiz-explanation" id="quizExplanation" hidden></p>
+            <button class="primary-button" id="nextQuestion" type="button" hidden>לשאלה הבאה <i>←</i></button>
+          </div>
+          <div class="final-card" id="finalCard" hidden>
+            <div class="final-medal">✦<span>מפענחי הקוד</span></div>
+            <div class="final-agent-celebration">
+              <img src="assets/3d/web/agent-pair-celebrating.png" alt="הסוכן והסוכנת חוגגים את סגירת תיק המשימה">
+              <span><small>✦ ניצחון במעבדה ✦</small><b>תיק 07 נסגר בהצלחה!</b></span>
+            </div>
+            <h2>כל הכבוד — אתם מפענחי הקוד!</h2>
+            <p><strong id="finalStudentName"></strong>, השלמת את מסלול המידע: שעתוק בגרעין, יציאת RNA ותרגום בריבוזום. חלבון האיתות שנוצר הזעיק תאי תמך ותאי חיסון סמוכים לקריאת תגבור ולהגנת הרקמה.</p>
+            <div class="final-score"><span>נקודות שנצברו</span><b id="finalScore">0</b></div>
+            <button class="victory-replay" id="replayCelebration" type="button">עוד קונפטי! <i>✦</i></button>
+            <button class="report-button" id="downloadReport" type="button">הורדת דו״ח הניצחון <i>↓</i></button>
+            <button class="primary-button primary-button--wide" id="restartButton" type="button">צאו למסע נוסף <i>↻</i></button>
+          </div>
+          <p class="model-note">המחשה לימודית: חלבונים אמיתיים מכילים בדרך כלל הרבה יותר משלוש חומצות אמיניות.</p>
+        </section>
+
+        <div class="stage-message" id="stageMessage" role="status" aria-live="polite">
+          <span id="stageMessageIcon">✓</span><p id="stageMessageText">הסריקה מוכנה</p>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="code-dialog" id="codeDialog" aria-labelledby="codeDialogTitle">
+      <div class="code-dialog__card">
+        <button class="code-dialog__close" id="closeCodeDialog" type="button" aria-label="סגירת מפת הקוד הגנטי">×</button>
+        <span class="code-dialog__eyebrow">מפת הפענוח המלאה</span>
+        <h2 id="codeDialogTitle">הקוד הנוכחי: <bdi id="dialogCurrentCodon" dir="ltr">AUG</bdi></h2>
+        <div class="code-map-visual">
+          <img src="assets/genetic-code-wheel-he-v4.png" alt="טבלת הקוד הגנטי המלאה בעברית בצורת גלגל קודונים">
+        </div>
+        <p class="code-dialog__help">אתרו את שלוש אותיות הקודון לפי הסדר, מן המרכז אל הטבעת החיצונית.</p>
+        <button class="primary-button code-dialog__confirm" id="confirmCodeDialog" type="button">הבנתי — לפענוח <i aria-hidden="true">←</i></button>
+      </div>
+    </dialog>
+
+    <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+      <div class="welcome__particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="welcome__orb" aria-hidden="true"><img class="welcome-cell-asset bio-asset" src="assets/3d/web/cell-exterior.webp" alt=""></div>
+      <div class="welcome__content">
+        <span class="welcome__eyebrow"><svg viewBox="0 0 28 20" aria-hidden="true"><circle cx="4" cy="10" r="2"></circle><path d="M8 6c3 2 3 6 0 8M13 3c6 4 6 10 0 14M19 1c8 5 8 13 0 18"></path></svg> שידור חירום</span>
+        <h1 id="welcomeTitle">האות <em>האבוד</em></h1>
+        <p class="welcome__briefing">בשעה 03:17 נקטע אות חלבוני מסתורי ששודר מתוך תא חי. החלבון נפגע, אך ה־<bdi dir="ltr">DNA</bdi> המקורי עדיין שלם.</p>
+        <div class="welcome__transmission"><p>חדְרו אל התא, שחזרו את ההודעה וגלו מדוע היא חיונית.</p></div>
+        <div class="welcome__route" aria-label="מסלול המשימה"><span>תא</span><i></i><span>גרעין</span><i></i><span><bdi dir="ltr">DNA</bdi></span><i></i><span><bdi dir="ltr">RNA</bdi></span><i></i><span>חלבון</span></div>
+        <div class="agent-identification">
+          <img class="agent-pair-asset" src="assets/3d/web/agent-pair.webp" alt="סוכן וסוכנת של משלחת הצופן החי">
+          <label class="agent-name-field" for="studentName"><span>כתבו כאן את שמכם/ן</span><input id="studentName" name="studentName" type="text" maxlength="40" autocomplete="name" required placeholder="כתבו כאן את שמכם/ן"></label>
+        </div>
+        <button class="launch-button" id="launchButton" type="button"><span>קבלו את המשימה</span><i>←</i></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
